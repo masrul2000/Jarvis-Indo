@@ -334,9 +334,17 @@ class VoiceService {
     }
   }
 
+  /// Nomor urut ucapan. Naik setiap ada speak() baru atau stopSpeaking(),
+  /// supaya ucapan lama yang terpotong tidak diulang dengan suara offline
+  /// (penyebab "suara Jarvis ada 2" yang terdengar bersamaan).
+  int _speechGen = 0;
+
   Future<void> speak(String text) async {
+    final myGen = ++_speechGen;
     final clean = sanitizeForSpeech(await _localize(sanitizeForSpeech(text)));
     if (clean.isEmpty) return;
+    // Sudah ada ucapan yang lebih baru selama proses terjemahan -> batalkan.
+    if (myGen != _speechGen) return;
 
     // Temporarily pause microphone while speaking to eliminate echo and feedback
     final wasListening = _listening;
@@ -344,7 +352,8 @@ class VoiceService {
       await stopListening();
     }
 
-    await stopSpeaking();
+    await _haltAudio();
+    if (myGen != _speechGen) return;
     isSpeaking.value = true;
 
     try {
@@ -358,6 +367,9 @@ class VoiceService {
         } catch (e) {
           debugPrint('[VoiceService] Neural voice error, falling back to local TTS: $e');
         }
+        // Diputus oleh ucapan baru / tombol stop: JANGAN ulang pakai suara
+        // offline, karena itu membuat dua suara terdengar bersamaan.
+        if (myGen != _speechGen) return;
       }
 
       // 2. Fall back to local FlutterTts (offline safe)
@@ -375,11 +387,17 @@ class VoiceService {
         _speakCompleter = null;
       }
     } finally {
-      isSpeaking.value = false;
+      // Jangan matikan indikator jika ucapan yang lebih baru sedang berjalan.
+      if (myGen == _speechGen) isSpeaking.value = false;
     }
   }
 
   Future<void> stopSpeaking() async {
+    _speechGen++;
+    await _haltAudio();
+  }
+
+  Future<void> _haltAudio() async {
     try {
       await EdgeTtsService.instance.stop();
       await _tts.stop();
