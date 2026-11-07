@@ -12,6 +12,7 @@ import 'app_usage_service.dart';
 import 'phone_storage_service.dart';
 import 'screen_automation_service.dart';
 import 'sentry_service.dart';
+import 'settings_service.dart';
 import 'sound_radar_service.dart';
 import 'system_control_service.dart';
 import 'system_diagnostics_service.dart';
@@ -364,6 +365,13 @@ class JarvisToolsService {
   /// Returns current local date and time in an articulate natural format.
   String getCurrentDateTime() {
     final now = DateTime.now();
+    if (SettingsService.instance.isIndonesian) {
+      const hari = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+      const bulan = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+          'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      final jam = DateFormat('HH.mm').format(now);
+      return 'hari ${hari[now.weekday - 1]}, ${now.day} ${bulan[now.month - 1]} ${now.year}, pukul $jam';
+    }
     final dateStr = DateFormat('EEEE, MMMM d, y').format(now);
     final timeStr = DateFormat('h:mm a').format(now);
     return '$dateStr at $timeStr';

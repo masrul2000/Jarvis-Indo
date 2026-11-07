@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import 'ai_service.dart';
 import 'edge_tts_service.dart';
 import 'settings_service.dart';
 
@@ -152,6 +153,30 @@ class VoiceService {
           break;
       }
 
+      // Mode Bahasa Indonesia: paksa suara TTS offline ke id-ID
+      // (profil di atas hanya mengatur pitch/kecepatan).
+      if (SettingsService.instance.isIndonesian) {
+        try {
+          await _tts.setLanguage('id-ID');
+          final dynamic voices = await _tts.getVoices;
+          if (voices is List) {
+            for (final v in voices) {
+              if (v is Map) {
+                final locale = (v['locale'] ?? '').toString().toLowerCase();
+                if (locale.startsWith('id-id') || locale.startsWith('id_id') ||
+                    locale.startsWith('in-id') || locale.startsWith('in_id')) {
+                  await _tts.setVoice({
+                    'name': v['name'].toString(),
+                    'locale': v['locale'].toString(),
+                  });
+                  break;
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
       await _tts.awaitSpeakCompletion(true);
 
       _tts.setStartHandler(() {
@@ -179,7 +204,7 @@ class VoiceService {
       _ttsReady = true;
     } catch (_) {
       try {
-        await _tts.setLanguage('en-US');
+        await _tts.setLanguage(SettingsService.instance.speechLocale);
         _ttsReady = true;
       } catch (_) {
         _ttsReady = false;
@@ -210,6 +235,7 @@ class VoiceService {
       await _nativeSpeechChannel.invokeMethod('startListening', {
         'continuous': continuous,
         'manual': manual,
+        'language': SettingsService.instance.speechLocale,
       });
       _listening = true;
       listeningNotifier.value = true;
@@ -259,8 +285,57 @@ class VoiceService {
         .trim();
   }
 
+  // ---------------------------------------------------------------------------
+  // Bahasa Indonesia: terjemahkan otomatis kalimat bawaan yang masih Inggris
+  // ---------------------------------------------------------------------------
+  static const Set<String> _enWords = {
+    'the', 'is', 'are', 'you', 'your', 'i', 'have', 'has', 'to', 'of', 'and',
+    'sir', 'it', 'for', 'with', 'this', 'that', 'will', 'would', 'be', 'on',
+    'now', 'please', 'let', 'me', 'my', 'currently', 'an', 'can', 'there',
+    'anything', 'else', 'been', 'what', 'shall', 'may', 'right', 'away',
+  };
+  static const Set<String> _idWords = {
+    'yang', 'dan', 'di', 'ke', 'dari', 'pak', 'saya', 'anda', 'ini', 'itu',
+    'untuk', 'dengan', 'sudah', 'akan', 'tidak', 'ada', 'sedang', 'sekarang',
+    'baik', 'siap', 'sebentar', 'kembali', 'kamu', 'apa', 'bisa', 'lagi',
+  };
+  final Map<String, String> _translationCache = {};
+
+  static bool looksEnglish(String text) {
+    final words = text
+        .toLowerCase()
+        .replaceAll(RegExp(r"[^a-z\s']"), ' ')
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty);
+    var en = 0, id = 0;
+    for (final w in words) {
+      if (_enWords.contains(w)) en++;
+      if (_idWords.contains(w)) id++;
+    }
+    return en >= 2 && en > id * 1.5;
+  }
+
+  Future<String> _localize(String text) async {
+    if (!SettingsService.instance.isIndonesian || !looksEnglish(text)) {
+      return text;
+    }
+    final cached = _translationCache[text];
+    if (cached != null) return cached;
+    try {
+      final translated = await AiService.instance
+          .translateForSpeech(text)
+          .timeout(const Duration(seconds: 8));
+      if (_translationCache.length > 200) _translationCache.clear();
+      _translationCache[text] = translated;
+      return translated;
+    } catch (e) {
+      debugPrint('[VoiceService] Gagal menerjemahkan, pakai teks asli: $e');
+      return text;
+    }
+  }
+
   Future<void> speak(String text) async {
-    final clean = sanitizeForSpeech(text);
+    final clean = sanitizeForSpeech(await _localize(sanitizeForSpeech(text)));
     if (clean.isEmpty) return;
 
     // Temporarily pause microphone while speaking to eliminate echo and feedback

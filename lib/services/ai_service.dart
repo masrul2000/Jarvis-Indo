@@ -837,7 +837,7 @@ You cannot directly tap the screen in this mode. If the user asks you to perform
 
     final body = jsonEncode({
       'model': settings.model,
-      'messages': messages,
+      'messages': _applyLanguageDirective(messages, settings),
       'max_tokens': settings.maxTokens,
       'temperature': settings.temperature,
       'stream': true,
@@ -1257,6 +1257,70 @@ The user is viewing an article or screen on their device and requested an execut
   }
 
   /// Shared request/response plumbing for [complete], [chat], and [completeMultimodal].
+  /// Menerjemahkan kalimat bawaan aplikasi (bahasa Inggris) ke Bahasa
+  /// Indonesia lisan sebelum diucapkan oleh Jarvis.
+  Future<String> translateForSpeech(String text) async {
+    final settings = SettingsService.instance;
+    const prompt =
+        'Terjemahkan teks berikut ke Bahasa Indonesia lisan yang natural dan sopan. '
+        'Ganti "sir" dengan "Pak". Pertahankan angka, nama aplikasi, nama orang, dan istilah teknis. '
+        'Balas HANYA dengan hasil terjemahan, tanpa tanda kutip, tanpa penjelasan.';
+    final messages = <Map<String, dynamic>>[
+      if (settings.useSystemPrompt) {'role': 'system', 'content': prompt},
+      {
+        'role': 'user',
+        'content': settings.useSystemPrompt ? text : '$prompt\n\n$text',
+      },
+    ];
+    final out = (await _postChatCompletion(messages, settings)).trim();
+    return out.isEmpty ? text : out;
+  }
+
+  /// Instruksi bahasa yang disisipkan ke setiap permintaan AI saat mode
+  /// Bahasa Indonesia aktif. Kunci JSON & nilai enum tetap bahasa Inggris
+  /// supaya parser aplikasi tetap bekerja.
+  static const String indonesianDirective = '''
+
+=== ATURAN BAHASA (WAJIB, PRIORITAS TERTINGGI) ===
+- Pengguna berbicara dalam Bahasa Indonesia. Semua teks yang dibaca atau didengar pengguna (jawaban chat, field "spoken", "reasoning", ringkasan, sapaan) WAJIB ditulis dalam Bahasa Indonesia yang natural, sopan, dan enak didengar saat diucapkan.
+- Panggil pengguna "Pak" (bukan "sir"). Abaikan instruksi lain yang menyuruh memakai "sir" atau bahasa Inggris.
+- Perintah suara bisa dalam Bahasa Indonesia (mis. "buka YouTube", "nyalakan senter", "cuaca di Jakarta", "kecilkan volume"). Pahami maksudnya seperti perintah bahasa Inggris yang setara.
+- JANGAN terjemahkan: kunci JSON, nilai enum/kategori seperti "type" ("chat", "weather", "system", dll.), nama aksi ("click_text", "open_app", dll.), perintah sistem ("volume_up", "on"/"off"), nama aplikasi, serta label tombol/teks yang benar-benar tampil di layar.
+- Untuk "tool_arg" berupa query pencarian, nama kota, atau topik, boleh tetap dalam Bahasa Indonesia sesuai ucapan pengguna.
+''';
+
+  List<Map<String, dynamic>> _applyLanguageDirective(
+    List<Map<String, dynamic>> messages,
+    SettingsService settings,
+  ) {
+    if (!settings.isIndonesian || messages.isEmpty) return messages;
+    final out = messages.map((m) => Map<String, dynamic>.from(m)).toList();
+
+    // 1. Jika ada system prompt, tambahkan instruksi di akhirnya.
+    final sysIdx = out.indexWhere((m) => m['role'] == 'system');
+    if (sysIdx != -1 && out[sysIdx]['content'] is String) {
+      out[sysIdx]['content'] =
+          '${out[sysIdx]['content']}\n$indonesianDirective';
+      return out;
+    }
+
+    // 2. Tanpa system prompt (model yang tidak mendukung role system):
+    //    tempelkan ke pesan user terakhir.
+    final userIdx = out.lastIndexWhere((m) => m['role'] == 'user');
+    if (userIdx != -1) {
+      final content = out[userIdx]['content'];
+      if (content is String) {
+        out[userIdx]['content'] = '$indonesianDirective\n$content';
+      } else if (content is List) {
+        out[userIdx]['content'] = [
+          {'type': 'text', 'text': indonesianDirective},
+          ...content,
+        ];
+      }
+    }
+    return out;
+  }
+
   Future<String> _postChatCompletion(
     List<Map<String, dynamic>> messages,
     SettingsService settings,
@@ -1295,7 +1359,7 @@ The user is viewing an article or screen on their device and requested an execut
 
     final body = jsonEncode({
       'model': settings.model,
-      'messages': messages,
+      'messages': _applyLanguageDirective(messages, settings),
       'max_tokens': settings.maxTokens,
       'temperature': settings.temperature,
       'stream': false,

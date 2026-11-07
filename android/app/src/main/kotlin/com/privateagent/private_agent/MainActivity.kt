@@ -661,9 +661,14 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /** Bahasa pengenalan suara (BCP-47), dikirim dari Flutter. Default Bahasa Indonesia. */
+    private var speechLanguage: String = "id-ID"
+
     private fun buildRecognitionIntent(): Intent {
         return Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, speechLanguage)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, speechLanguage)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 5)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, packageName)
@@ -684,6 +689,9 @@ class MainActivity : FlutterActivity() {
                 "startListening" -> {
                     val continuous = call.argument<Boolean>("continuous") ?: true
                     val manual = call.argument<Boolean>("manual") ?: false
+                    call.argument<String>("language")?.let {
+                        if (it.isNotBlank()) speechLanguage = it
+                    }
                     startNativeListening(continuous, manual)
                     result.success(true)
                 }

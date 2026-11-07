@@ -537,3 +537,21 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 Architected, designed, and engineered by **Abuzar**. All rights reserved.
 
 *Built for privacy enthusiasts, power users, and anyone who ever dreamed of carrying a genuine, autonomous J.A.R.V.I.S. in their pocket.*
+
+---
+
+## 🇮🇩 Dukungan Bahasa Indonesia
+
+Jarvis sekarang bisa diajak bicara dalam Bahasa Indonesia (default).
+Atur di **Settings → Jarvis → Bahasa / Language**.
+
+- **Pengenalan suara** memakai locale `id-ID` (Google Speech di HP).
+- **Suara Jarvis**: neural `id-ID-ArdiNeural` (pria) / `id-ID-GadisNeural` (wanita); fallback TTS offline `id-ID`.
+- **Jawaban AI** otomatis Bahasa Indonesia dan memanggil pengguna "Pak".
+- **Wake word**: "Hai Jarvis", "Halo Jarvis", "Hei Jarvis", "Oke Jarvis", atau cukup "Jarvis".
+- **Konfirmasi**: "iya / boleh / oke / lanjut" dan "tidak / nggak / jangan / nanti saja".
+- Perintah seperti "buka YouTube", "nyalakan senter", "cuaca di Jakarta", "tambah tugas beli susu",
+  "catat bahwa rapat jam 3", "ingatkan saya untuk minum obat" dipahami lewat AI.
+- Kalimat bawaan aplikasi yang masih berbahasa Inggris diterjemahkan otomatis oleh AI sebelum diucapkan.
+
+Tips: pasang paket bahasa **Indonesia** untuk Google Speech Services & Google TTS di HP agar pengenalan suara bisa offline dan lebih akurat.

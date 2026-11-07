@@ -342,7 +342,12 @@ class _JarvisSettingsScreenState extends State<JarvisSettingsScreen> {
   // 1. Voice & Speech Synthesis Card
   // ---------------------------------------------------------------------------
   Widget _voiceCard(ThemeData theme) {
-    final neuralVoiceOptions = [
+    final neuralVoiceOptions = _settings.isIndonesian
+        ? [
+            ('id-ID-ArdiNeural', 'Ardi (Indonesia - Pria)', 'Suara pria Indonesia natural'),
+            ('id-ID-GadisNeural', 'Gadis (Indonesia - Wanita)', 'Suara wanita Indonesia natural'),
+          ]
+        : [
       ('en-GB-RyanNeural', 'Ryan (British Neural - Authentic Jarvis)', 'Paul Bettany style, warm, articulate & human'),
       ('en-GB-ThomasNeural', 'Thomas (British Neural - Conversational)', 'Natural UK cadence and smooth phrasing'),
       ('en-US-GuyNeural', 'Guy (US Neural - Studio Male)', 'Polished, authoritative US broadcaster tone'),
@@ -356,6 +361,40 @@ class _JarvisSettingsScreenState extends State<JarvisSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Bahasa percakapan
+            const Text(
+              'Bahasa / Language',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'id', label: Text('Bahasa Indonesia')),
+                ButtonSegment(value: 'en', label: Text('English')),
+              ],
+              selected: {_settings.jarvisLanguage},
+              onSelectionChanged: (sel) async {
+                await _settings.setJarvisLanguage(sel.first);
+                await VoiceService.instance.reconfigureVoice();
+                // Restart mikrofon supaya bahasa pengenalan suara ikut berganti.
+                if (VoiceService.instance.isListening) {
+                  await VoiceService.instance.stopListening();
+                  if (_settings.jarvisAlwaysOn) {
+                    JarvisService.instance.ensureAlwaysOnRunning();
+                  }
+                }
+                setState(() {});
+              },
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Mengatur bahasa pengenalan suara, suara Jarvis, dan jawaban AI.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const Divider(height: 24),
+
             // Always-on Hands-free toggle
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -415,6 +454,7 @@ class _JarvisSettingsScreenState extends State<JarvisSettingsScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    key: ValueKey(_settings.jarvisLanguage),
                     initialValue: _settings.jarvisNeuralVoice,
                     isExpanded: true,
                     decoration: InputDecoration(
@@ -453,7 +493,9 @@ class _JarvisSettingsScreenState extends State<JarvisSettingsScreen> {
                   icon: const Icon(Icons.volume_up_rounded, size: 22),
                   onPressed: () async {
                     await VoiceService.instance.speak(
-                      'All systems operational, sir. Standing by for your command.',
+                      _settings.isIndonesian
+                          ? 'Semua sistem berjalan normal, Pak. Siap menerima perintah.'
+                          : 'All systems operational, sir. Standing by for your command.',
                     );
                   },
                 ),

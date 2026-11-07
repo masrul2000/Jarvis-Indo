@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'calendar_reminder_service.dart';
 import 'conversational_memory_service.dart';
 import 'hermes_evolution_service.dart';
+import 'settings_service.dart';
 import 'todo_service.dart';
 
 enum PersonalityArchetype {
@@ -297,7 +298,19 @@ class PersonalityService extends ChangeNotifier {
 
   T _pick<T>(List<T> list) => list[_rnd.nextInt(list.length)];
 
+  /// True jika Jarvis diatur ke Bahasa Indonesia.
+  bool get _id => SettingsService.instance.isIndonesian;
+
+  /// Sapaan untuk pengguna: nama (jika dikenal) atau "Pak".
+  String get _pak {
+    final name = getOperatorName();
+    return name.isNotEmpty ? name : 'Pak';
+  }
+
   String getGeneralAck([String? task]) {
+    if (_id) {
+      return _pick(['Siap, Pak.', 'Baik, saya kerjakan.', 'Segera, Pak.', 'Oke, sedang diproses.', 'Siap, langsung saya jalankan.', 'Laksanakan, Pak.']);
+    }
     final options = [
       'Consider it done.',
       'On it now.',
@@ -314,6 +327,9 @@ class PersonalityService extends ChangeNotifier {
   }
 
   String getMusicAck(String songQuery) {
+    if (_id) {
+      return _pick(['Memutar $songQuery sekarang.', 'Siap, saya putarkan $songQuery.', 'Oke, $songQuery segera diputar. Selamat menikmati.']);
+    }
     final options = [
       'Cueing up $songQuery for you.',
       'Playing $songQuery now.',
@@ -327,6 +343,13 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic, contextual, personalized acknowledgment for news requests.
   String getNewsAck([String? topic]) {
+    if (_id) {
+      if (topic != null && topic.trim().isNotEmpty) {
+        final t = topic.trim();
+        return _pick(['Baik $_pak, saya carikan berita terbaru soal $t.', 'Sebentar $_pak, saya cek perkembangan terkini tentang $t.', 'Siap $_pak, mengumpulkan berita terbaru mengenai $t.']);
+      }
+      return _pick(['Baik $_pak, saya ambilkan berita utama hari ini.', 'Sebentar $_pak, saya cek headline terbaru.', 'Siap $_pak, mengumpulkan berita terkini untuk Anda.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
     final hour = DateTime.now().hour;
@@ -361,6 +384,9 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic, contextual, personalized acknowledgment for live web searches.
   String getWebSearchAck([String? query]) {
+    if (_id) {
+      return _pick(['Sebentar $_pak, saya carikan di internet.', 'Baik $_pak, saya cek sumber online terbaru.', 'Siap $_pak, sedang mencari informasinya.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
 
@@ -392,6 +418,9 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic, contextual, personalized acknowledgment for knowledge questions & concepts.
   String getQuestionAck(String question) {
+    if (_id) {
+      return _pick(['Pertanyaan bagus, $_pak. Sebentar saya jelaskan.', 'Baik $_pak, saya cek dulu.', 'Sebentar $_pak, saya rangkum jawabannya.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
 
@@ -444,6 +473,11 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic acknowledgment for Sentry Mode / Sentry Protocol (identical twins).
   String getSentryAck({required bool arm}) {
+    if (_id) {
+      return arm
+          ? _pick(['Mode Sentry aktif, $_pak. Sensor gerak siaga.', 'Siap $_pak, Sentry Protocol diaktifkan. Setiap gerakan akan terekam.'])
+          : _pick(['Mode Sentry dinonaktifkan, $_pak.', 'Baik $_pak, Sentry Protocol dimatikan.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
     if (arm) {
@@ -467,6 +501,10 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic acknowledgment for weather telemetry.
   String getWeatherAck([String? location]) {
+    if (_id) {
+      final lok = (location != null && location.trim().isNotEmpty) ? ' di ${location.trim()}' : '';
+      return _pick(['Sebentar $_pak, saya cek cuaca$lok.', 'Baik $_pak, mengambil data cuaca terkini$lok.', 'Siap $_pak, memeriksa prakiraan cuaca$lok.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
     final locText = (location != null && location.trim().isNotEmpty) ? ' for ${location.trim()}' : '';
@@ -480,6 +518,9 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic acknowledgment for system specifications & hardware telemetry.
   String getSystemSpecsAck() {
+    if (_id) {
+      return _pick(['Sebentar $_pak, saya cek kondisi perangkat.', 'Baik $_pak, memeriksa memori, penyimpanan, dan baterai.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
     final options = [
@@ -492,6 +533,9 @@ class PersonalityService extends ChangeNotifier {
 
   /// Dynamic acknowledgment for application usage & screen time.
   String getAppUsageAck() {
+    if (_id) {
+      return _pick(['Sebentar $_pak, saya cek statistik penggunaan aplikasi.', 'Baik $_pak, melihat aplikasi yang paling sering dipakai.']);
+    }
     final name = getOperatorName();
     final salutation = name.isNotEmpty ? name : 'sir';
     final options = [
@@ -502,6 +546,9 @@ class PersonalityService extends ChangeNotifier {
   }
 
   String getAppAck(String appName) {
+    if (_id) {
+      return _pick(['Membuka $appName.', 'Siap, $appName saya buka.', 'Oke, membuka $appName sekarang.']);
+    }
     final options = [
       'Opening $appName now.',
       'Launching $appName.',
@@ -513,6 +560,9 @@ class PersonalityService extends ChangeNotifier {
   }
 
   String getInstallAck(String targetApp) {
+    if (_id) {
+      return _pick(['Membuka Play Store untuk $targetApp.', 'Siap, saya carikan $targetApp di Play Store.']);
+    }
     final options = [
       'Opening the Play Store for $targetApp.',
       'Heading over to the store to get $targetApp for you.',
@@ -523,6 +573,26 @@ class PersonalityService extends ChangeNotifier {
   }
 
   String getSystemAck(String action) {
+    if (_id) {
+      switch (action) {
+        case 'volume_up':
+          return _pick(['Volume dinaikkan.', 'Suara saya besarkan.']);
+        case 'volume_down':
+          return _pick(['Volume diturunkan.', 'Suara saya kecilkan.']);
+        case 'mute':
+          return 'Suara dibisukan.';
+        case 'unmute':
+          return 'Suara diaktifkan kembali.';
+        case 'screenshot':
+          return _pick(['Tangkapan layar diambil.', 'Screenshot tersimpan.']);
+        case 'home':
+          return 'Kembali ke layar utama.';
+        case 'back':
+          return 'Kembali.';
+        default:
+          return 'Pengaturan sistem disesuaikan.';
+      }
+    }
     switch (action) {
       case 'volume_up':
         return _pick(['Turning volume up.', 'Increasing volume.', 'Volume raised.']);
@@ -544,6 +614,9 @@ class PersonalityService extends ChangeNotifier {
   }
 
   String getStandDown() {
+    if (_id) {
+      return _pick(['Baik, saya standby. Panggil saja kapan pun.', 'Siap, saya istirahat dulu. Panggil "Hai Jarvis" kalau butuh.', 'Oke, saya siaga.']);
+    }
     final options = [
       'Standing down. Call me anytime.',
       'Understood, stepping back.',

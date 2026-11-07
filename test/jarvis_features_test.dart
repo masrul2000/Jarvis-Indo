@@ -351,6 +351,21 @@ void main() {
       expect(JarvisService.isNegativeResponse('dismiss'), isTrue);
       expect(JarvisService.isNegativeResponse('leave it'), isTrue);
     });
+
+    test('Bahasa Indonesia: konfirmasi ya/tidak dan wake word', () {
+      expect(JarvisService.isAffirmativeResponse('iya boleh'), isTrue);
+      expect(JarvisService.isAffirmativeResponse('oke lanjut'), isTrue);
+      expect(JarvisService.isAffirmativeResponse('silakan'), isTrue);
+      expect(JarvisService.isNegativeResponse('tidak usah'), isTrue);
+      expect(JarvisService.isNegativeResponse('nggak, nanti saja'), isTrue);
+      expect(JarvisService.isNegativeResponse('jangan'), isTrue);
+      expect(JarvisService.isNegativeResponse('tidak boleh'), isTrue);
+
+      expect(JarvisService.extractWakeCommand('Hai Jarvis'), '');
+      expect(JarvisService.extractWakeCommand('halo jarvis buka youtube'), 'buka youtube');
+      expect(JarvisService.extractWakeCommand('Jarvis, nyalakan senter'), 'nyalakan senter');
+      expect(JarvisService.extractWakeCommand('besok kita makan siang di mana'), isNull);
+    });
   });
 
   group('Desk Mode: Wake Word Gating & Ambient Chatter Rejection', () {

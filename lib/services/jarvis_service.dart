@@ -340,7 +340,7 @@ class JarvisService extends ChangeNotifier {
     // - standalone (jarvis | javis | jervis | jarves | jarvice | charvis | garvis | jarvi)
     // - (wake up jarvis | jarvis wake up | jarvis please)
     final wakePattern = RegExp(
-      r'\b(?:(?:hey|hello|hi|okay|ok|yo|listen|wake\s+up|dear)\s+(?:jarvis|javis|jervis|jarves|jarvice|charvis|garvis|gervis|travis|service|davis|davies|harvest|jarvi|google)|(?:jarvis|javis|jervis|jarves|jarvice|charvis|garvis|jarvi)\s+(?:wake\s+up|please|online)|(?:jarvis|javis|jervis|jarves|jarvice|charvis|garvis|jarvi)|(?:hey|okay|ok|hello|hi)\s+google)\b',
+      r'\b(?:(?:hey|hello|hi|okay|ok|oke|yo|listen|wake\s+up|dear|hai|hei|halo|hallo|helo|woi|bangun)\s+(?:jarvis|javis|jervis|jarves|jarvice|charvis|garvis|gervis|travis|service|davis|davies|harvest|jarvi|jarwis|jarpis|jarfis|google)|(?:jarvis|javis|jervis|jarves|jarvice|charvis|garvis|jarvi|jarwis|jarpis|jarfis)\s+(?:wake\s+up|please|online|bangun|tolong)|(?:jarvis|javis|jervis|jarves|jarvice|charvis|garvis|jarvi|jarwis|jarpis|jarfis)|(?:hey|okay|ok|oke|hello|hi|hai|halo)\s+google)\b',
       caseSensitive: false,
     );
 
@@ -361,7 +361,7 @@ class JarvisService extends ChangeNotifier {
 
     if (after.isNotEmpty) {
       final cleanAfter = after.replaceFirst(
-        RegExp(r'^(?:wake\s+up|please|online)\s*', caseSensitive: false),
+        RegExp(r'^(?:wake\s+up|please|online|bangun|tolong)\s*', caseSensitive: false),
         '',
       ).trim();
       return cleanAfter.isNotEmpty ? cleanAfter : '';
@@ -376,7 +376,11 @@ class JarvisService extends ChangeNotifier {
           lowerBefore == 'ok' ||
           lowerBefore == 'okay' ||
           lowerBefore == 'yo' ||
-          lowerBefore == 'wake up') {
+          lowerBefore == 'wake up' ||
+          lowerBefore == 'hai' ||
+          lowerBefore == 'hei' ||
+          lowerBefore == 'halo' ||
+          lowerBefore == 'oke') {
         return '';
       }
       return before;
@@ -387,6 +391,10 @@ class JarvisService extends ChangeNotifier {
   }
 
   String? _extractWakeCommand(String speech) => extractWakeCommand(speech);
+
+  /// Pilih teks sesuai bahasa aktif (Indonesia / English).
+  String _t(String id, String en) =>
+      SettingsService.instance.isIndonesian ? id : en;
 
   /// Displays a modal dialog safely using the global navigation key.
   void _showModalSafely(Widget dialog) {
@@ -534,7 +542,7 @@ class JarvisService extends ChangeNotifier {
   static bool isAffirmativeResponse(String input) {
     final lower = input.trim().toLowerCase();
     final patterns = [
-      r'\b(yes|yeah|yep|yup|sure|please|do\s+it|turn\s+it\s+on|turn\s+on|engage|activate|ok|okay|go\s+ahead|proceed|definitely|affirmative|sounds\s+good|why\s+not|let\x27s\s+do\s+it)\b',
+      r'\b(yes|yeah|yep|yup|sure|please|do\s+it|turn\s+it\s+on|turn\s+on|engage|activate|ok|okay|go\s+ahead|proceed|definitely|affirmative|sounds\s+good|why\s+not|let\x27s\s+do\s+it|ya|iya|iyaa|yoi|boleh|oke|oce|siap|lanjut|lanjutkan|silakan|silahkan|gas|setuju|nyalakan|aktifkan|tentu|betul|benar)\b',
     ];
     for (final pattern in patterns) {
       if (RegExp(pattern, caseSensitive: false).hasMatch(lower)) return true;
@@ -546,7 +554,7 @@ class JarvisService extends ChangeNotifier {
   static bool isNegativeResponse(String input) {
     final lower = input.trim().toLowerCase();
     final patterns = [
-      r'\b(no|nope|nah|not\s+now|never\s+mind|nevermind|don\x27t|cancel|later|dismiss|leave\s+it|negative|stop|skip)\b',
+      r'\b(no|nope|nah|not\s+now|never\s+mind|nevermind|don\x27t|cancel|later|dismiss|leave\s+it|negative|stop|skip|tidak|tdk|nggak|ngga|gak|ga|enggak|engga|jangan|batal|batalkan|nanti|nanti\s+saja|lain\s+kali|lewati|berhenti|cukup)\b',
     ];
     for (final pattern in patterns) {
       if (RegExp(pattern, caseSensitive: false).hasMatch(lower)) return true;
@@ -693,8 +701,9 @@ class JarvisService extends ChangeNotifier {
       _proactiveConfirmationTimer?.cancel();
 
       final answer = trimmed.toLowerCase();
-      final isAffirmative = isAffirmativeResponse(answer);
       final isNegative = isNegativeResponse(answer);
+      // "tidak boleh" mengandung "boleh" -> negatif menang.
+      final isAffirmative = !isNegative && isAffirmativeResponse(answer);
 
       debugPrint('[JarvisService] Proactive response: "$answer" (yes: $isAffirmative, no: $isNegative)');
 
@@ -704,7 +713,7 @@ class JarvisService extends ChangeNotifier {
         _statusMessage = 'CONFIRMED // ENGAGING ${suggestion.title.toUpperCase()}';
         notifyListeners();
 
-        const ack = 'Right away, sir. Executing now.';
+        final ack = _t('Siap, Pak. Saya jalankan sekarang.', 'Right away, sir. Executing now.');
         _lastJarvisSpeech = ack;
         _phase = JarvisPhase.speaking;
         notifyListeners();
@@ -715,7 +724,7 @@ class JarvisService extends ChangeNotifier {
       } else if (isNegative) {
         _phase = JarvisPhase.speaking;
         _statusMessage = 'DISMISSED // STANDING DOWN';
-        const ack = 'Understood, sir. Standing by.';
+        final ack = _t('Baik, Pak. Saya standby.', 'Understood, sir. Standing by.');
         _lastJarvisSpeech = ack;
         notifyListeners();
         await _voice.speak(ack);
@@ -2389,7 +2398,11 @@ Mastering the boundless road.
             await JarvisToolsService.instance.getBatteryStatus();
         final level = battery['level'] as int;
         final isCharging = battery['isCharging'] as bool;
-        final battReply = level >= 0
+        final battReply = SettingsService.instance.isIndonesian
+            ? (level >= 0
+                ? 'Baterai saat ini $level persen, ${isCharging ? 'sedang diisi' : 'tidak sedang diisi'}, Pak. Ada lagi yang bisa saya bantu?'
+                : 'Data baterai sedang tidak tersedia, Pak.')
+            : level >= 0
             ? 'Your battery is currently at $level%, ${isCharging ? 'and charging' : 'discharging normally'}, sir. We have plenty of power. Do you need anything else, sir?'
             : 'Battery level telemetry is currently unavailable, sir. Is there anything else I can check?';
 
@@ -2405,7 +2418,7 @@ Mastering the boundless road.
         notifyListeners();
 
         final dt = JarvisToolsService.instance.getCurrentDateTime();
-        final reply = 'It is currently $dt, sir. How else may I be of service today?';
+        final reply = _t('Sekarang $dt, Pak.', 'It is currently $dt, sir. How else may I be of service today?');
         _lastJarvisSpeech = reply;
         notifyListeners();
         await _voice.speak(reply);
@@ -2419,8 +2432,8 @@ Mastering the boundless road.
 
         await JarvisToolsService.instance.setTorch(on);
         final reply = on
-            ? 'Flashlight is on, sir. Let me know when you would like it switched off.'
-            : 'Flashlight is deactivated, sir. Anything else I can do for you?';
+            ? _t('Senter sudah menyala, Pak.', 'Flashlight is on, sir. Let me know when you would like it switched off.')
+            : _t('Senter sudah dimatikan, Pak.', 'Flashlight is deactivated, sir. Anything else I can do for you?');
         _lastJarvisSpeech = reply;
         _phase = JarvisPhase.speaking;
         _statusMessage = on ? 'TORCH ACTIVE' : 'TORCH OFFLINE';
@@ -2471,13 +2484,15 @@ Mastering the boundless road.
 
       case JarvisIntentType.todo:
         final lower = trimmed.toLowerCase();
-        if (lower.startsWith('add ') || lower.contains('add task') || lower.contains('add to')) {
+        final idTodo = RegExp(r'^(tambah(kan)?|catat|masukkan|masukin|buat)\s+(tugas|todo|to-do|daftar\s+tugas|ke\s+(daftar\s+)?(tugas|todo))\s*(baru\s*)?:?\s*', caseSensitive: false);
+        if (lower.startsWith('add ') || lower.contains('add task') || lower.contains('add to') || idTodo.hasMatch(lower)) {
           var taskText = trimmed
               .replaceFirst(RegExp(r'^(add\s+to\s+(my\s+)?(todo|to-do)(\s+list)?|add\s+task|add)\s+', caseSensitive: false), '')
+              .replaceFirst(idTodo, '')
               .trim();
           if (taskText.isEmpty) taskText = 'Review task';
           await TodoService.instance.addTask(taskText);
-          final reply = 'I have added "$taskText" to your to-do agenda, sir. Anything else?';
+          final reply = _t('"$taskText" sudah saya tambahkan ke daftar tugas, Pak. Ada lagi?', 'I have added "$taskText" to your to-do agenda, sir. Anything else?');
           _lastJarvisSpeech = reply;
           _phase = JarvisPhase.speaking;
           _statusMessage = 'TODO ITEM RECORDED';
@@ -2495,16 +2510,18 @@ Mastering the boundless road.
 
       case JarvisIntentType.notes:
         final lower = trimmed.toLowerCase();
-        if (lower.startsWith('take a note') || lower.startsWith('note down') || lower.startsWith('write a note')) {
+        final idNote = RegExp(r'^(catat(kan)?|buat(kan)?\s+catatan|simpan\s+catatan|tulis(kan)?\s+catatan)(\s+bahwa)?\s*[:\s]*', caseSensitive: false);
+        if (lower.startsWith('take a note') || lower.startsWith('note down') || lower.startsWith('write a note') || idNote.hasMatch(lower)) {
           var noteContent = trimmed
               .replaceFirst(RegExp(r'^(take\s+a\s+note(\s+that)?|note\s+down|write\s+a\s+note(\s+that)?)\s*[:\s]*', caseSensitive: false), '')
+              .replaceFirst(idNote, '')
               .trim();
           if (noteContent.isEmpty) noteContent = 'Personal Note';
           await NotesKnowledgeService.instance.addNote(
             title: 'Voice Note ${DateTime.now().month}/${DateTime.now().day}',
             content: noteContent,
           );
-          final reply = 'Note saved in your personal knowledge base, sir: "$noteContent".';
+          final reply = _t('Catatan tersimpan, Pak: "$noteContent".', 'Note saved in your personal knowledge base, sir: "$noteContent".');
           _lastJarvisSpeech = reply;
           _phase = JarvisPhase.speaking;
           _statusMessage = 'KNOWLEDGE RECORD SAVED';
@@ -2522,16 +2539,18 @@ Mastering the boundless road.
 
       case JarvisIntentType.calendar:
         final lower = trimmed.toLowerCase();
-        if (lower.startsWith('remind me to ') || lower.startsWith('set a reminder for ')) {
+        final idRemind = RegExp(r'^(ingatkan\s+(saya|aku)(\s+untuk)?|buat(kan)?\s+pengingat(\s+untuk)?|pasang\s+pengingat(\s+untuk)?)\s+', caseSensitive: false);
+        if (lower.startsWith('remind me to ') || lower.startsWith('set a reminder for ') || idRemind.hasMatch(lower)) {
           final reminderText = trimmed
               .replaceFirst(RegExp(r'^(remind\s+me\s+to|set\s+a\s+reminder\s+for)\s+', caseSensitive: false), '')
+              .replaceFirst(idRemind, '')
               .trim();
           await CalendarReminderService.instance.addItem(
             title: reminderText,
             dateTime: DateTime.now().add(const Duration(hours: 1)),
             isReminder: true,
           );
-          final reply = 'I have set a reminder for "$reminderText", sir.';
+          final reply = _t('Pengingat untuk "$reminderText" sudah dipasang, Pak.', 'I have set a reminder for "$reminderText", sir.');
           _lastJarvisSpeech = reply;
           _phase = JarvisPhase.speaking;
           _statusMessage = 'REMINDER SCHEDULED';

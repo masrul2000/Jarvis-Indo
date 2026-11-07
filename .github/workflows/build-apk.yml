@@ -1,0 +1,61 @@
+name: Build APK
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Siapkan kunci tanda tangan (jika ada Secrets)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/jarvis-indo.jks
+            printf "storeFile=jarvis-indo.jks\nstorePassword=%s\nkeyAlias=jarvis\nkeyPassword=%s\n" \
+              "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" > android/key.properties
+            echo "Memakai kunci tetap dari Secrets."
+          else
+            echo "Secrets belum diisi, memakai kunci debug."
+          fi
+
+      - run: flutter --version
+      - run: flutter pub get
+      - run: flutter build apk --release
+
+      - name: Ganti nama APK
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/Jarvis-Indo-${{ github.run_number }}.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jarvis-Indo-apk
+          path: dist/*.apk
+
+      - name: Terbitkan ke Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Jarvis Indo build ${{ github.run_number }}
+          body: APK Jarvis dengan dukungan Bahasa Indonesia. Unduh file .apk di bawah.
+          files: dist/*.apk

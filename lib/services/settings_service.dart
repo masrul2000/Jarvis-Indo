@@ -240,6 +240,19 @@ class SettingsService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Bahasa percakapan Jarvis: 'id' (Bahasa Indonesia) atau 'en' (English).
+  /// Mengatur bahasa pengenalan suara (STT), suara (TTS), dan jawaban AI.
+  String get jarvisLanguage => _prefs?.getString('jarvis_language') ?? 'id';
+  Future<void> setJarvisLanguage(String value) async {
+    await _prefs?.setString('jarvis_language', value);
+    notifyListeners();
+  }
+
+  bool get isIndonesian => jarvisLanguage == 'id';
+
+  /// Locale BCP-47 untuk speech recognizer & TTS offline.
+  String get speechLocale => isIndonesian ? 'id-ID' : 'en-US';
+
   /// Voice profile: 'paul' (British Jarvis), 'friday' (Irish), 'stark' (US), 'kip' (Deep), 'cortana' (Smooth).
   String get jarvisVoice => _prefs?.getString('jarvis_voice') ?? 'paul';
   Future<void> setJarvisVoice(String value) async {
@@ -249,8 +262,19 @@ class SettingsService extends ChangeNotifier {
 
   /// Studio Neural Voice (Edge-TTS) for ultra-realistic human speech.
   /// Defaults to en-GB-RyanNeural (Paul Bettany British JARVIS style).
-  String get jarvisNeuralVoice =>
-      _prefs?.getString('jarvis_neural_voice') ?? 'en-GB-RyanNeural';
+  String get jarvisNeuralVoice {
+    final saved = _prefs?.getString('jarvis_neural_voice');
+    if (isIndonesian) {
+      // Suara Inggris tidak bisa melafalkan Bahasa Indonesia dengan baik,
+      // jadi otomatis pakai suara neural Indonesia.
+      return (saved != null && saved.startsWith('id-ID'))
+          ? saved
+          : 'id-ID-ArdiNeural';
+    }
+    return (saved != null && !saved.startsWith('id-ID'))
+        ? saved
+        : 'en-GB-RyanNeural';
+  }
   Future<void> setJarvisNeuralVoice(String value) async {
     await _prefs?.setString('jarvis_neural_voice', value);
     notifyListeners();
